@@ -13,9 +13,17 @@ RUN mv live_config.yml config.yml
 RUN apt-get update -y
 RUN apt-get install -y python3-dev python-dev gcc
 
+# setup rust
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+#RUN echo 'source $HOME/.cargo/env' >> $HOME/.bashrc
+
+# Add .cargo/bin to PATH
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 # Install the dependencies
 RUN pip install --upgrade pip setuptools wheel
 RUN pip install -r requirements.txt
+#RUN pip install -r git_repos.txt
 
 # expose the port
 EXPOSE 5002

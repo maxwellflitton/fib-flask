@@ -4,6 +4,7 @@ from fib_calcs.fib_calculation import FibCalculation
 from data_access import dal
 from models.database.fib_entry import FibEntry
 from task_queue.engine import make_celery
+from flitton_fib_rs.flitton_fib_rs import fibonacci_number
 
 
 app = Flask(__name__)
@@ -23,7 +24,7 @@ def calculate(number):
     fib_calc = dal.session.query(FibEntry).filter_by(
                            input_number=number).one_or_none()
     if fib_calc is None:
-        if number < 31:
+        if number < 50:
             calc = FibCalculation(input_number=number)
             new_calc = FibEntry(input_number=number,
                                 calculated_number=calc.
@@ -34,6 +35,29 @@ def calculate(number):
             return f"you entered {calc.input_number} " \
                    f"which has a Fibonacci number of " \
                    f"{calc.fib_number}"
+        calculate_fib.delay(number)
+        return "calculate fib sent to queue because " \
+               "it's above 30"
+    return f"you entered {fib_calc.input_number} " \
+           f"which has an existing Fibonacci number of " \
+           f"{fib_calc.calculated_number}"
+
+
+@app.route("/rust/calculate/<int:number>")
+def rust_calculate(number):
+    fib_calc = dal.session.query(FibEntry).filter_by(
+                           input_number=number).one_or_none()
+    if fib_calc is None:
+        if number < 50:
+            fib_number = fibonacci_number(number)
+            new_calc = FibEntry(input_number=number,
+                                calculated_number=fib_number)
+            dal.session.add(new_calc)
+            dal.session.commit()
+
+            return f"you entered {number} " \
+                   f"which has a Fibonacci number of " \
+                   f"{fib_number}"
         calculate_fib.delay(number)
         return "calculate fib sent to queue because " \
                "it's above 30"
