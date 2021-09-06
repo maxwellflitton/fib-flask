@@ -1,11 +1,11 @@
 from flask import Flask
 
-from fib_calcs.fib_calculation import FibCalculation
 from data_access import dal
+from fib_calcs import calc_fib_num
+from fib_calcs.enums import CalculationMethod
 from models.database.fib_entry import FibEntry
 from task_queue.engine import make_celery
-from flitton_fib_rs.flitton_fib_rs import fibonacci_number
-
+from rust_db_cloning import get_fib_enteries
 
 app = Flask(__name__)
 celery = make_celery(app)
@@ -25,16 +25,19 @@ def calculate(number):
                            input_number=number).one_or_none()
     if fib_calc is None:
         if number < 50:
-            calc = FibCalculation(input_number=number)
+            fib_number, time_taken = calc_fib_num(
+                input_number=number,
+                method=CalculationMethod.PYTHON
+            )
             new_calc = FibEntry(input_number=number,
-                                calculated_number=calc.
-                                fib_number)
+                                calculated_number=fib_number
+                                )
             dal.session.add(new_calc)
             dal.session.commit()
 
-            return f"you entered {calc.input_number} " \
+            return f"you entered {number} " \
                    f"which has a Fibonacci number of " \
-                   f"{calc.fib_number}"
+                   f"{fib_number} which took {time_taken}"
         calculate_fib.delay(number)
         return "calculate fib sent to queue because " \
                "it's above 30"
@@ -49,7 +52,10 @@ def rust_calculate(number):
                            input_number=number).one_or_none()
     if fib_calc is None:
         if number < 50:
-            fib_number = fibonacci_number(number)
+            fib_number, time_taken = calc_fib_num(
+                input_number=number,
+                method=CalculationMethod.RUST
+            )
             new_calc = FibEntry(input_number=number,
                                 calculated_number=fib_number)
             dal.session.add(new_calc)
@@ -57,13 +63,18 @@ def rust_calculate(number):
 
             return f"you entered {number} " \
                    f"which has a Fibonacci number of " \
-                   f"{fib_number}"
+                   f"{fib_number} which took {time_taken}"
         calculate_fib.delay(number)
         return "calculate fib sent to queue because " \
                "it's above 30"
     return f"you entered {fib_calc.input_number} " \
            f"which has an existing Fibonacci number of " \
            f"{fib_calc.calculated_number}"
+
+
+@app.route("/get")
+def get():
+    return str(get_fib_enteries(dal.url))
 
 
 @app.teardown_request
