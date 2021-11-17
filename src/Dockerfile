@@ -14,7 +14,7 @@ RUN apt-get update -y
 RUN apt-get install -y python3-dev python-dev gcc
 
 # setup rust
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --profile minimal --no-modify-path
 
 # Add .cargo/bin to PATH
 ENV PATH="/root/.cargo/bin:${PATH}"
